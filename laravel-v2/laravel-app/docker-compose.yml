@@ -1,0 +1,69 @@
+version: '3'
+services:
+
+  #PHP Service
+  laravel_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: laravel/php
+    container_name: laravel-app
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - laravel-app-network
+
+  #Nginx Service
+  laravel_webserver:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: laravel-webserver
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "9080:9080"
+        #      - "443:443"
+    volumes:
+      - ./:/var/www
+        #- ./nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - laravel-app-network
+
+  #MySQL Service
+  laravel_db:
+    image: mysql:8.0
+    container_name: laravel-db
+    restart: unless-stopped
+    env_file: .env
+    tty: true
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_DATABASE: laravel
+      MYSQL_ROOT_PASSWORD: $MYSQL_PASSWORD
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - dbdata_laravel:/var/lib/mysql/
+        # - ./mysql/my.cnf:/etc/mysql/my.cnf
+    command: '--default-authentication-plugin=mysql_native_password'
+    networks:
+      - laravel-app-network
+
+#Docker Networks
+networks:
+  laravel-app-network:
+    driver: bridge
+
+#Volumes
+volumes:
+  dbdata_laravel:
+    driver: local
